@@ -1,0 +1,60 @@
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- Secrets / local config ---
+.env
+.env.*
+!.env.example
+*.pem
+secrets/
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+.ipynb_checkpoints/
+
+# --- C++ / CMake ---
+bench/build/
+cmake-build*/
+*.o
+*.a
+*.so
+*.dylib
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+Testing/
+
+# --- Node / web console ---
+web/node_modules/
+web/dist/
+
+# --- Proto generated ---
+*_pb2.py
+*_pb2_grpc.py
+*_pb2.pyi
+
+# --- local build instruction, reference only, never committed ---
+# INSTRUCTION-SET.md is the paste-ready build prompt for an autonomous coding session.
+# It is deliberately untracked: it describes how this repo gets built, which is not part
+# of what the repo ships. The canonical copy lives outside every repo, in Draft 2/.
+INSTRUCTION-SET.md
+BUILD-LOG.md
