@@ -1,0 +1,113 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "7202:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy noeviction
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - redis-data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "7203:5432"
+    environment:
+      POSTGRES_DB: dtq
+      POSTGRES_USER: dtq
+      POSTGRES_PASSWORD: dtq_dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dtq"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+  # Kafka (KRaft mode, no ZooKeeper) - profile: brokers
+  kafka:
+    image: apache/kafka:3.7.0
+    ports:
+      - "7216:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:7216
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs
+      CLUSTER_ID: "MkU3OEVBNTcwNTJENDM2Qk"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    profiles:
+      - brokers
+
+  # RabbitMQ with management plugin - profile: brokers
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    ports:
+      - "7217:5672"
+      - "7218:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: dtq
+      RABBITMQ_DEFAULT_PASS: dtq_dev
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    profiles:
+      - brokers
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.102.0
+    ports:
+      - "7221:4317"   # gRPC receiver
+      - "7222:4318"   # HTTP receiver
+    volumes:
+      - ./config/otel-collector.yaml:/etc/otelcol-contrib/config.yaml
+    depends_on:
+      - jaeger
+    profiles:
+      - observability
+
+  # Jaeger for trace visualization
+  jaeger:
+    image: jaegertracing/all-in-one:1.57
+    ports:
+      - "7220:16686"  # UI
+      - "7223:14268"  # collector HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    profiles:
+      - observability
+
+  # Prometheus (optional)
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    ports:
+      - "7204:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    profiles:
+      - observability
+
+volumes:
+  redis-data:
+  pg-data:
