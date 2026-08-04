@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dtq"
+version = "0.1.0"
+description = "Distributed Task Queue & Workflow Engine with exactly-once effect semantics"
+requires-python = ">=3.11"
+dependencies = [
+    "redis>=5.0.0",
+    "asyncpg>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "alembic>=1.13.0",
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.30.0",
+    "pydantic>=2.7.0",
+    "pydantic-settings>=2.3.0",
+    "structlog>=24.1.0",
+    "aiokafka>=0.10.0",
+    "aio-pika>=9.4.0",
+    "grpcio>=1.64.0",
+    "grpcio-tools>=1.64.0",
+    "protobuf>=5.27.0",
+    "pyarrow>=16.0.0",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "opentelemetry-exporter-otlp>=1.25.0",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "opentelemetry-instrumentation-redis>=0.46b0",
+    "opentelemetry-exporter-prometheus>=0.46b0",
+    "prometheus-client>=0.20.0",
+    "sse-starlette>=2.1.0",
+    "httpx>=0.27.0",
+    "click>=8.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-timeout>=2.3.0",
+    "hypothesis>=6.100.0",
+    "mypy>=1.10.0",
+    "ruff>=0.4.0",
+    "types-redis>=4.6.0",
+    "coverage>=7.5.0",
+]
+
+[project.scripts]
+dtq-worker = "dtq.worker.__main__:main"
+dtq-control = "dtq.control.app:run"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = [
+    "integration: requires real Redis + Postgres (docker-compose up)",
+    "chaos: SIGKILL / restart scenarios",
+    "property: randomised exactly-once property tests",
+    "slow: long-running tests",
+    "broker(name): parameterize by broker backend",
+]
+testpaths = ["tests"]
+timeout = 30
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy"]
+exclude = ["bench/", "web/", "workers/cpp/"]
+
+[[tool.mypy.overrides]]
+module = ["aiokafka.*", "aio_pika.*", "grpc.*", "google.protobuf.*", "pyarrow.*"]
+ignore_missing_imports = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "ANN", "B", "A", "COM", "C4", "PT", "RET", "SIM"]
+ignore = ["ANN101", "ANN102", "COM812"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["dtq"]
