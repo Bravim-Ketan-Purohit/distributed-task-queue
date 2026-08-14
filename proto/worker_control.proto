@@ -1,0 +1,120 @@
+syntax = "proto3";
+
+package dtq.worker_control;
+
+// Worker control channel — task delivery stays on the broker.
+// Worker *control* moves to gRPC: heartbeats up, commands down.
+// This makes graceful shutdown and the chaos panel's "kill a worker"
+// button real operations rather than polled state.
+
+service WorkerControl {
+  // Register a worker with the control plane
+  rpc Register (RegisterRequest) returns (RegisterReply);
+
+  // Bidirectional stream: heartbeats and in-flight counts up,
+  // pause/resume/drain/cancel_task commands down.
+  rpc Session (stream WorkerEvent) returns (stream ControlCommand);
+
+  // Drain a worker: stop accepting new tasks, finish in-flight
+  rpc Drain (DrainRequest) returns (DrainReply);
+}
+
+// --- Registration ---
+
+message RegisterRequest {
+  string worker_id = 1;
+  repeated string queues = 2;
+  int32 concurrency = 3;
+  string version = 4;
+}
+
+message RegisterReply {
+  bool accepted = 1;
+  string message = 2;
+}
+
+// --- Bidirectional Session ---
+
+message WorkerEvent {
+  string worker_id = 1;
+  oneof event {
+    HeartbeatEvent heartbeat = 2;
+    TaskStartedEvent task_started = 3;
+    TaskCompletedEvent task_completed = 4;
+    TaskFailedEvent task_failed = 5;
+  }
+}
+
+message HeartbeatEvent {
+  int32 in_flight = 1;
+  int32 concurrency = 2;
+  double cpu_percent = 3;
+  int64 memory_bytes = 4;
+  double timestamp = 5;
+}
+
+message TaskStartedEvent {
+  string task_id = 1;
+  string task_name = 2;
+  int32 attempt = 3;
+  int64 fence = 4;
+}
+
+message TaskCompletedEvent {
+  string task_id = 1;
+  string outcome = 2;  // succeeded, failed, lease_lost, timeout
+  double duration_ms = 3;
+}
+
+message TaskFailedEvent {
+  string task_id = 1;
+  string error_type = 2;
+  string error_repr = 3;
+  int32 attempt = 4;
+  bool will_retry = 5;
+}
+
+message ControlCommand {
+  oneof command {
+    PauseCommand pause = 1;
+    ResumeCommand resume = 2;
+    DrainCommand drain = 3;
+    CancelTaskCommand cancel_task = 4;
+    ShutdownCommand shutdown = 5;
+  }
+}
+
+message PauseCommand {
+  string reason = 1;
+}
+
+message ResumeCommand {
+  string reason = 1;
+}
+
+message DrainCommand {
+  int32 timeout_s = 1;  // max seconds to wait for in-flight tasks
+}
+
+message CancelTaskCommand {
+  string task_id = 1;
+  string reason = 2;
+}
+
+message ShutdownCommand {
+  string reason = 1;
+  bool graceful = 2;
+}
+
+// --- Drain RPC ---
+
+message DrainRequest {
+  string worker_id = 1;
+  int32 timeout_s = 2;
+}
+
+message DrainReply {
+  bool success = 1;
+  int32 tasks_drained = 2;
+  string message = 3;
+}
