@@ -35,12 +35,15 @@ def publish_event(
         metadata=metadata or {},
     )
     dead: set[asyncio.Queue[TaskEvent]] = set()
+    # `_subscribers -= dead` below rebinds the name, which makes _subscribers a
+    # local for the whole function and raises UnboundLocalError on this read.
+    # Mutate in place instead of rebinding.
     for q in _subscribers:
         try:
             q.put_nowait(event)
         except asyncio.QueueFull:
             dead.add(q)
-    _subscribers -= dead
+    _subscribers.difference_update(dead)
 
 
 async def subscribe() -> AsyncGenerator[TaskEvent, None]:

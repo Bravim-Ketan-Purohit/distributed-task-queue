@@ -96,7 +96,10 @@ void Producer::run(std::atomic<bool>& running) {
 
         // Build and send via pipeline
         std::string data = make_envelope(seq_++);
-        redisAppendCommand(c, "XADD %s * data %s",
+        // MAXLEN ~ bounds stream memory. Without it the stream grows until Redis
+        // hits maxmemory and (under noeviction) silently rejects every XADD,
+        // which stalls consumers and produces phantom enqueue counts.
+        redisAppendCommand(c, "XADD %s MAXLEN ~ 200000 * data %s",
                           queue_stream_.c_str(), data.c_str());
         pipeline_count++;
 
@@ -106,7 +109,11 @@ void Producer::run(std::atomic<bool>& running) {
                 redisReply* reply = nullptr;
                 if (redisGetReply(c, reinterpret_cast<void**>(&reply)) == REDIS_OK) {
                     if (reply) {
-                        stats_.record_enqueue();
+                        if (reply->type == REDIS_REPLY_ERROR) {
+                            stats_.record_failure();
+                        } else {
+                            stats_.record_enqueue();
+                        }
                         freeReplyObject(reply);
                     }
                 } else {

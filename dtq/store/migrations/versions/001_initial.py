@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 revision: str = "001"
@@ -19,11 +20,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     # task_state enum
-    task_state = sa.Enum(
+    # Create the enum type once, explicitly. The column below then references it
+    # with create_type=False -- without that, op.create_table emits a second
+    # CREATE TYPE and the migration aborts with DuplicateObjectError.
+    task_state = postgresql.ENUM(
         "pending", "scheduled", "leased", "succeeded", "failed", "dead", "cancelled",
         name="task_state",
+        create_type=False,
     )
-    task_state.create(op.get_bind(), checkfirst=True)
+    sa.Enum(
+        "pending", "scheduled", "leased", "succeeded", "failed", "dead", "cancelled",
+        name="task_state",
+    ).create(op.get_bind(), checkfirst=True)
 
     # workflows table (referenced by tasks)
     op.create_table(

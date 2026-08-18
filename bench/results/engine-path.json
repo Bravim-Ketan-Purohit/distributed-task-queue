@@ -1,0 +1,10 @@
+{
+  "path": "engine (control plane -> redis -> worker -> postgres commit)",
+  "duration_seconds": 301.0,
+  "enqueued": 67699,
+  "completed": 67682,
+  "complete_rate_per_sec": 224.8,
+  "events_per_day": 19427031,
+  "workers": 4,
+  "concurrency_per_worker": 32
+}

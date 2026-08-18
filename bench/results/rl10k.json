@@ -1,0 +1,32 @@
+{
+  "configuration": {
+    "failure_rate": 0.0,
+    "otel_exporters": "off",
+    "payload_bytes": 256,
+    "redis_persistence": "appendonly",
+    "worker_count": 6
+  },
+  "duration_seconds": 60.027994375,
+  "host": "Darwin arm64 Bravims-MacBook-Pro.local",
+  "latency_ms": {
+    "max": 136.0,
+    "mean": 14.744906922878958,
+    "p50": 14.0,
+    "p95": 28.0,
+    "p99": 44.0
+  },
+  "results": {
+    "complete_rate_per_sec": 9709.636413285547,
+    "completed": 582850,
+    "enqueue_rate_per_sec": 9999.751053651624,
+    "enqueued": 600265,
+    "events_per_day": 838912586,
+    "failed": 0,
+    "reconciliation": {
+      "completed_plus_failed": 582850,
+      "difference": 17415,
+      "enqueued": 600265
+    }
+  },
+  "timestamp": "2026-08-18T04:04:15Z"
+}

@@ -8,6 +8,7 @@ from sqlalchemy import (
     BigInteger,
     DateTime,
     Enum,
+    ForeignKey,
     Index,
     Integer,
     SmallInteger,
@@ -67,8 +68,11 @@ class AttemptRow(Base):
     __tablename__ = "attempts"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    # The migration declares this FK; the ORM must declare it too, or SQLAlchemy
+    # cannot infer the join for TaskRow.attempts and *every* mapper fails to
+    # configure -- which made every control-plane request return HTTP 500.
     task_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), nullable=False
+        UUID(as_uuid=True), ForeignKey("tasks.id", ondelete="CASCADE"), nullable=False
     )
     attempt_no: Mapped[int] = mapped_column(Integer, nullable=False)
     worker_id: Mapped[str] = mapped_column(Text, nullable=False)
